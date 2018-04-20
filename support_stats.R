@@ -143,14 +143,18 @@ all_posts %>%
     filter(year(creation_date) >= 2015) %>% 
     ggplot(aes(fill = site, x = year(creation_date))) + 
     geom_bar() +
-    scale_fill_manual(values = c('#1a81c2', '#8f2c47', 'grey'),
+    scale_fill_manual(values = c('#1a81c2', '#8f2c47', 'grey40'),
                       name = "Site",
                       labels = c("bioconductor.org", "biostars.org", "github.com")) + 
     theme_bw() + 
     xlab('Year') +
-    ylab('No. of Questions')
+    ylab('No. of Questions') +
     facet_wrap(~ tag) 
     
 
 posts.me <- getPostsByUser(site = 'bioc', user_id = '3986', n_pages = 20)
 posts.me2 <- getPostsByUser(site = 'biostars', user_id = '4156', n_pages = 5)
+
+
+
+read.delim('https://www.bioconductor.org/packages/stats/bioc/Rhdf5lib/Rhdf5lib_stats.tab')
