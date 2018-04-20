@@ -113,24 +113,33 @@ getPostsByUser <- function(site = 'bioc', user_id = '3986', n_pages = 20) {
     
 }
 
-
-getGithubIssues <- function(repo = "rhdf5") {
-    tmp <- content(GET('https://api.github.com/repos/grimbough/rhdf5/issues?state=all'))
-    tmp2 <- lapply(tmp, function(x) return(tibble(creation_date = as.Date(x$created_at))))
+getGithubIssues <- function(user = 'grimbough', repo = "rhdf5") {
     
-    res <- tibble(creation_date = pull(bind_rows(tmp2), creation_date), tag = repo, site = "github")
+    url <- paste0('https://api.github.com/repos/', user, 
+                  '/', repo, '/issues?state=all')
+    
+    json <- content(GET(url))
+    creation_date <- vapply(json, function(x) return(x$created_at), character(1)) %>%
+        as.Date()
+    
+    res <- tibble(creation_date = creation_date, tag = repo, site = "github")
     return(res)
 }
 
-posts.biomart <- bind_rows(getPostsByTag(tag = 'biomaRt', site = "bioc"), 
-                           getPostsByTag(tag = 'biomaRt', site = 'biostars'),
-                           getPostsByTag(tag = 'rhdf5', site = "bioc", n_pages = 4), 
-                           getPostsByTag(tag = 'rhdf5', site = 'biostars', n_pages = 1),
+all_posts <- bind_rows(getPostsByTag(tag = 'biomaRt', site = "bioc", n_pages = 8), 
+                           getPostsByTag(tag = 'biomaRt', site = 'biostars', n_pages = 6),
+                           getPostsByTag(tag = 'rhdf5+Rhdf5lib', site = "bioc", n_pages = 4), 
+                           getPostsByTag(tag = 'rhdf5+Rhdf5lib', site = 'biostars', n_pages = 1),
                            getPostsByTag(tag = 'IONiseR', site = "bioc", n_pages = 3), 
                            getPostsByTag(tag = 'IONiseR', site = 'biostars', n_pages = 1))
 
-posts.biomart %>% 
-    bind_rows(posts.biomart, tmp3) %>%
+github_issues <- lapply(c('rhdf5', 'Rhdf5lib', 'biomaRt', 'BiocWorkflowTools', 'IONiseR'),
+                        getGithubIssues, user = 'grimbough') %>%
+    bind_rows() %>% 
+    mutate(tag = if_else(grepl(tag, pattern = 'hdf5'), 'rhdf5+Rhdf5lib', tag))
+
+all_posts %>% 
+    bind_rows(github_issues) %>%
     filter(year(creation_date) >= 2015) %>% 
     ggplot(aes(fill = site, x = year(creation_date))) + 
     geom_bar() +
@@ -139,11 +148,9 @@ posts.biomart %>%
                       labels = c("bioconductor.org", "biostars.org", "github.com")) + 
     theme_bw() + 
     xlab('Year') +
+    ylab('No. of Questions')
     facet_wrap(~ tag) 
     
-
-
-posts.rhdf5 <- getPostsByTag(tag = 'rhdf5', pages = 3)
 
 posts.me <- getPostsByUser(site = 'bioc', user_id = '3986', n_pages = 20)
 posts.me2 <- getPostsByUser(site = 'biostars', user_id = '4156', n_pages = 5)
