@@ -3,6 +3,7 @@ library(stringr)
 library(dplyr)
 library(lubridate)
 library(ggplot2)
+library(readr)
 
 getPostByAPI <- function(site, post_id) {
     
@@ -155,6 +156,26 @@ all_posts %>%
 posts.me <- getPostsByUser(site = 'bioc', user_id = '3986', n_pages = 20)
 posts.me2 <- getPostsByUser(site = 'biostars', user_id = '4156', n_pages = 5)
 
+getBiocStats <- function(package = 'rhdf5') {
+    url <- paste0('https://www.bioconductor.org/packages/stats/bioc/',
+                  package, '/', package, '_stats.tab', sep = '')
+    dl_stats <- read_delim(url, delim = '\t', col_types = c('ccii')) %>% 
+        filter(Month != 'all') %>%
+        mutate(Date = ymd(paste(Year, Month, '01', sep = '-')), Site = 'bioc')
+    dl_stats
+}
 
+dl_stats <- read_delim('~/Rhdf5lib_stats.tab.txt', delim = '\t', col_types = c('ccii')) %>% 
+    filter(Month != 'all') %>%
+    mutate(Date = ymd(paste(Year, Month, '01', sep = '-')), Site = 'bioc')
 
-read.delim('https://www.bioconductor.org/packages/stats/bioc/Rhdf5lib/Rhdf5lib_stats.tab')
+ggplot(dl_stats, aes(x = Date, y = Nb_of_distinct_IPs, fill = Site)) + 
+    geom_bar(stat = 'identity') +
+    xlab('year') +
+    ylab('Num of distinct IPs') +
+    scale_fill_manual(values = c('#1a81c2', '#8f2c47', 'grey40'),
+                      name = "Site",
+                      labels = c("bioconductor.org", "biostars.org", "github.com")) +
+    theme_bw()
+    
+    
