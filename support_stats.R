@@ -158,24 +158,32 @@ posts.me2 <- getPostsByUser(site = 'biostars', user_id = '4156', n_pages = 5)
 
 getBiocStats <- function(package = 'rhdf5') {
     url <- paste0('https://www.bioconductor.org/packages/stats/bioc/',
-                  package, '/', package, '_stats.tab', sep = '')
+                 package, '/', package, '_stats.tab', sep = '')
+#url <- paste0('~/',
+#                  package, '_stats.tab.txt', sep = '')
     dl_stats <- read_delim(url, delim = '\t', col_types = c('ccii')) %>% 
         filter(Month != 'all') %>%
-        mutate(Date = ymd(paste(Year, Month, '01', sep = '-')), Site = 'bioc')
+        mutate(Date = ymd(paste(Year, Month, '01', sep = '-')), Site = 'bioc', Package = package)
     dl_stats
 }
 
-dl_stats <- read_delim('~/Rhdf5lib_stats.tab.txt', delim = '\t', col_types = c('ccii')) %>% 
-    filter(Month != 'all') %>%
-    mutate(Date = ymd(paste(Year, Month, '01', sep = '-')), Site = 'bioc')
+all_stats <- lapply(c('rhdf5', 'biomaRt', 'IONiseR'), getBiocStats) %>%
+    bind_rows() %>%
+    filter(year(Date) >= 2015) %>%
+    mutate(Package = if_else(grepl(Package, pattern = 'hdf5'), 'rhdf5+Rhdf5lib', Package))
+    
 
-ggplot(dl_stats, aes(x = Date, y = Nb_of_distinct_IPs, fill = Site)) + 
-    geom_bar(stat = 'identity') +
+ggplot(all_stats, aes(x = Date, y = Nb_of_distinct_IPs, fill = as.factor(year(Date)))) + 
+    geom_histogram(stat = 'identity', width = days_in_month(Date)) +
     xlab('year') +
     ylab('Num of distinct IPs') +
-    scale_fill_manual(values = c('#1a81c2', '#8f2c47', 'grey40'),
-                      name = "Site",
-                      labels = c("bioconductor.org", "biostars.org", "github.com")) +
-    theme_bw()
+   # scale_fill_manual(values = c('#1a81c2', '#8f2c47', 'grey40'),
+#                      name = "Site",
+ #                     labels = c("bioconductor.org", "biostars.org", "github.com")) +
+    scale_fill_manual(values = c("#A6CEE3", "#1F78B4"))  +
+    guides(fill = FALSE) +
+    theme_bw() +
+    facet_wrap(~ Package) +
+    scale_y_log10()
     
     
