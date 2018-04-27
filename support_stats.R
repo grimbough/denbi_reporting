@@ -4,6 +4,7 @@ library(dplyr)
 library(lubridate)
 library(ggplot2)
 library(readr)
+library(DT)
 
 getPostByAPI <- function(site, post_id) {
     
@@ -14,8 +15,10 @@ getPostByAPI <- function(site, post_id) {
     if(is.null(url_root)) { stop('Unknown site') }
     
     post_url <- paste0(url_root, '/api/post/', post_id)
-    res <- content(httr::GET(url = post_url))
-    return(as_tibble(res[ c('creation_date', 'id', 'root_id', 'title') ]))
+    
+    res <- content(httr::GET(url = post_url), type = 'application/json')
+    
+    return(as_tibble(res[ c('creation_date', 'id', 'root_id', 'title', 'url') ]))
 }
 
 getPostsByTag <- function(site = "bioc", tag = "biomaRt", n_pages = 10) {
@@ -122,39 +125,19 @@ getGithubIssues <- function(user = 'grimbough', repo = "rhdf5") {
     json <- content(GET(url))
     creation_date <- vapply(json, function(x) return(x$created_at), character(1)) %>%
         as.Date()
+    title <- vapply(json, function(x) return(x$title), character(1))
+    url <- vapply(json, function(x) return(x$html_url), character(1))
     
-    res <- tibble(creation_date = creation_date, tag = repo, site = "github")
+    res <- tibble(creation_date = creation_date, 
+                  tag = repo, 
+                  site = "github", 
+                  title = title,
+                  url = url)
     return(res)
 }
 
-all_posts <- bind_rows(getPostsByTag(tag = 'biomaRt', site = "bioc", n_pages = 8), 
-                           getPostsByTag(tag = 'biomaRt', site = 'biostars', n_pages = 6),
-                           getPostsByTag(tag = 'rhdf5+Rhdf5lib', site = "bioc", n_pages = 4), 
-                           getPostsByTag(tag = 'rhdf5+Rhdf5lib', site = 'biostars', n_pages = 1),
-                           getPostsByTag(tag = 'IONiseR', site = "bioc", n_pages = 3), 
-                           getPostsByTag(tag = 'IONiseR', site = 'biostars', n_pages = 1))
 
-github_issues <- lapply(c('rhdf5', 'Rhdf5lib', 'biomaRt', 'BiocWorkflowTools', 'IONiseR'),
-                        getGithubIssues, user = 'grimbough') %>%
-    bind_rows() %>% 
-    mutate(tag = if_else(grepl(tag, pattern = 'hdf5'), 'rhdf5+Rhdf5lib', tag))
-
-all_posts %>% 
-    bind_rows(github_issues) %>%
-    filter(year(creation_date) >= 2015) %>% 
-    ggplot(aes(fill = site, x = year(creation_date))) + 
-    geom_bar() +
-    scale_fill_manual(values = c('#1a81c2', '#8f2c47', 'grey40'),
-                      name = "Site",
-                      labels = c("bioconductor.org", "biostars.org", "github.com")) + 
-    theme_bw() + 
-    xlab('Year') +
-    ylab('No. of Questions') +
-    facet_wrap(~ tag) 
     
-
-posts.me <- getPostsByUser(site = 'bioc', user_id = '3986', n_pages = 20)
-posts.me2 <- getPostsByUser(site = 'biostars', user_id = '4156', n_pages = 5)
 
 getBiocStats <- function(package = 'rhdf5') {
     url <- paste0('https://www.bioconductor.org/packages/stats/bioc/',
@@ -167,23 +150,9 @@ getBiocStats <- function(package = 'rhdf5') {
     dl_stats
 }
 
-all_stats <- lapply(c('rhdf5', 'biomaRt', 'IONiseR'), getBiocStats) %>%
-    bind_rows() %>%
-    filter(year(Date) >= 2015) %>%
-    mutate(Package = if_else(grepl(Package, pattern = 'hdf5'), 'rhdf5+Rhdf5lib', Package))
+
     
 
-ggplot(all_stats, aes(x = Date, y = Nb_of_distinct_IPs, fill = as.factor(year(Date)))) + 
-    geom_histogram(stat = 'identity', width = days_in_month(Date)) +
-    xlab('year') +
-    ylab('Num of distinct IPs') +
-   # scale_fill_manual(values = c('#1a81c2', '#8f2c47', 'grey40'),
-#                      name = "Site",
- #                     labels = c("bioconductor.org", "biostars.org", "github.com")) +
-    scale_fill_manual(values = c("#A6CEE3", "#1F78B4"))  +
-    guides(fill = FALSE) +
-    theme_bw() +
-    facet_wrap(~ Package) +
-    scale_y_log10()
+
     
     

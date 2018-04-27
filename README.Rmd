@@ -1,0 +1,136 @@
+---
+title: "D-HuB KPI Statistics"
+date: "`r lubridate::today()`"
+output: 
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width = 12, fig.height = 6, cache = TRUE)
+```
+
+```{r, loadFunctions, echo=FALSE, include=FALSE}
+source('support_stats.R')
+```
+
+# Plots
+
+## Number of downloads
+
+Here we show the number of downloads from unique IP addresses each month
+
+```{r, echo = FALSE, include = FALSE, warning=FALSE, message=FALSE}
+all_stats <- lapply(c('rhdf5', 'Rhdf5lib', 'biomaRt', 'IONiseR', 'BiocWorkflowTools', 'DESeq', 'DESeq2', 'EBImage'), getBiocStats) %>%
+    bind_rows() %>%
+    filter(year(Date) >= 2015) %>%
+    select(-Year, -Month) %>%
+    mutate(PackageComb = if_else(grepl(Package, pattern = 'hdf5'), 'rhdf5+Rhdf5lib', Package)) %>%
+    mutate(PackageComb = if_else(grepl(PackageComb, pattern = 'DESeq'), 'DESeq+DESeq2', PackageComb)) 
+```
+
+```{r plotDownloads, echo = FALSE, dev='png', warning=FALSE}
+ggplot(all_stats, aes(x = Date, y = Nb_of_distinct_IPs, 
+                      fill = as.factor(year(Date)),
+                      color = as.factor(year(Date)),
+                      width = days_in_month(Date))) + 
+    geom_bar(stat = 'identity') +
+    xlab('year') +
+    ylab('Num of distinct IPs') +
+    guides(fill = FALSE, color = FALSE) +
+    theme_bw() +
+    scale_fill_manual(values = rep(c("#A1D99B", "#31A354"), 2))  +
+    scale_color_manual(values = rep(c("#A1D99B", "#31A354"), 2)) +
+    facet_wrap(~ PackageComb, scales = 'free_y') +
+        theme(legend.position="bottom", 
+          legend.text=element_text(size=14),
+          axis.text = element_text(size = 11),
+          title = element_text(size=14),
+          strip.text = element_text(size = 14))
+```
+
+### Number of support questions
+
+```{r, getPosts, echo = FALSE}
+all_posts <- bind_rows(getPostsByTag(tag = 'biomaRt', site = "bioc", n_pages = 8), 
+                       getPostsByTag(tag = 'biomaRt', site = 'biostars', n_pages = 6),
+                       getPostsByTag(tag = 'rhdf5', site = "bioc", n_pages = 2), 
+                       getPostsByTag(tag = 'rhdf5', site = 'biostars', n_pages = 1),
+                       getPostsByTag(tag = 'Rhdf5lib', site = "bioc", n_pages = 1), 
+                       getPostsByTag(tag = 'Rhdf5lib', site = 'biostars', n_pages = 1),
+                       getPostsByTag(tag = 'IONiseR', site = "bioc", n_pages = 1), 
+                       getPostsByTag(tag = 'IONiseR', site = 'biostars', n_pages = 1),
+                       getPostsByTag(tag = 'BiocWorkflowTools', site = "bioc", n_pages = 1),
+                       getPostsByTag(tag = 'DESeq', site = "bioc", n_pages = 20), 
+                       getPostsByTag(tag = 'DESeq', site = 'biostars', n_pages = 10),
+                       getPostsByTag(tag = 'DESeq2', site = "bioc", n_pages = 60), 
+                       getPostsByTag(tag = 'DESeq2', site = 'biostars', n_pages = 10),
+                       getPostsByTag(tag = 'EBImage', site = "bioc", n_pages = 1), 
+                       getPostsByTag(tag = 'EBImage', site = 'biostars', n_pages = 1)) %>%
+    filter(!duplicated(id)) %>%
+    mutate(url = paste0('https://', url),
+           software = tag, 
+           tag = if_else(grepl(tag, pattern = 'hdf5'), 'rhdf5+Rhdf5lib', tag)) %>%
+    mutate(tag = if_else(grepl(tag, pattern = 'DESeq'), 'DESeq+DESeq2', tag))
+
+github_issues <- lapply(c('rhdf5', 'Rhdf5lib', 'biomaRt', 'BiocWorkflowTools', 'IONiseR'),
+                        getGithubIssues, user = 'grimbough') %>%
+    bind_rows(getGithubIssues('EBImage', user = 'aoles')) %>% 
+    mutate(software = tag, tag = if_else(grepl(tag, pattern = 'hdf5'), 'rhdf5+Rhdf5lib', tag))
+```
+
+```{r, plotPosts, echo = FALSE, dev='png', warning=FALSE, fig.height=6.5}
+all_posts %>% 
+    bind_rows(github_issues) %>%
+    filter(year(creation_date) >= 2015) %>% 
+    ggplot(aes(fill = site, x = year(creation_date))) + 
+    geom_bar() +
+    scale_fill_manual(values = c('#1a81c2', '#8f2c47', 'grey40'),
+                      name = "Site",
+                      labels = c("bioconductor.org", "biostars.org", "github.com")) + 
+    theme_bw() + 
+    xlab('Year') +
+    ylab('No. of Questions') +
+    facet_wrap(~ tag, scales = 'free_y') + 
+    theme(legend.position="bottom", 
+          legend.text=element_text(size=14),
+          axis.text = element_text(size = 11),
+          title = element_text(size=14),
+          strip.text = element_text(size = 14))
+```
+
+
+# Raw Data
+
+Below you can find searchable, browsable tables containing the raw data used to generate the plots shown above.  Links to download tab separated text versions of this data are also provided.
+
+### Number of downloads
+
+```{r, downloads-tab, echo=FALSE}
+all_stats <- select(all_stats, c(3,1,2,4,5)) %>%
+    arrange(desc(Date))
+datatable(all_stats, rownames = FALSE,
+          extensions = 'Buttons', 
+          options = list(
+    dom = 'Bfrtip',
+    buttons = c('copy', 'csv', 'excel', 'pdf', 'print')
+  ))
+```
+
+### Number of support questions
+
+```{r, questions-tab, echo=FALSE}
+all_posts2 <- all_posts %>%
+    bind_rows(github_issues) %>%
+    mutate(title = paste0("<a href='", url, "'>", title, "</a>")) %>%
+    select( c(1,4,6,8)) %>%
+    arrange(desc(creation_date))
+
+datatable(all_posts2, rownames = FALSE, escape = -2,
+          extensions = 'Buttons', 
+          options = list(
+    dom = 'Bfrtip',
+    buttons = c('copy', 'csv', 'excel', 'pdf', 'print')
+  ))
+```
