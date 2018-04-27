@@ -8,12 +8,16 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, fig.width = 12, fig.height = 6, cache = FALSE)
+knitr::opts_chunk$set(echo = TRUE, fig.width = 12, fig.height = 6, cache = TRUE)
 ```
 
 ```{r, loadFunctions, echo=FALSE, include=FALSE}
 source('support_stats.R')
 ```
+
+<a href="http://www.denbi.de"><img src="https://tess.elixir-europe.org/system/content_providers/images/000/000/063/original/deNBI_Logo_rgb.jpg" width="400" align="right"></a>This page collates the number of downloads and user questions for Bioconductor tools supported by the Heidelberg Centre for Human Bioinformatics as part of the German Network for Bioinformatics Infrastructure. 
+
+You can view the code used to generate these plots at https://github.com/grimbough/denbi_reporting
 
 # Plots
 
