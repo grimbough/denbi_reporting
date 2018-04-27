@@ -1,5 +1,5 @@
 ---
-title: "D-HuB KPI Statistics"
+title: "HD-HuB KPI Statistics"
 date: "`r lubridate::today()`"
 output: 
   prettydoc::html_pretty:
@@ -8,7 +8,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, fig.width = 12, fig.height = 6, cache = TRUE)
+knitr::opts_chunk$set(echo = TRUE, fig.width = 12, fig.height = 6, cache = FALSE)
 ```
 
 ```{r, loadFunctions, echo=FALSE, include=FALSE}
@@ -17,7 +17,7 @@ source('support_stats.R')
 
 # Plots
 
-## Number of downloads
+### Number of downloads
 
 Here we show the number of downloads from unique IP addresses each month
 
@@ -69,6 +69,7 @@ all_posts <- bind_rows(getPostsByTag(tag = 'biomaRt', site = "bioc", n_pages = 8
                        getPostsByTag(tag = 'EBImage', site = "bioc", n_pages = 1), 
                        getPostsByTag(tag = 'EBImage', site = 'biostars', n_pages = 1)) %>%
     filter(!duplicated(id)) %>%
+
     mutate(url = paste0('https://', url),
            software = tag, 
            tag = if_else(grepl(tag, pattern = 'hdf5'), 'rhdf5+Rhdf5lib', tag)) %>%
