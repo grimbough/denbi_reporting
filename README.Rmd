@@ -11,7 +11,7 @@ output:
 knitr::opts_chunk$set(echo = TRUE, fig.width = 12, fig.height = 6, cache = TRUE)
 ```
 
-```{r, loadFunctions, echo=FALSE, include=FALSE}
+```{r, loadFunctions, echo=FALSE, include=FALSE, cache=FALSE}
 source('support_stats.R')
 ```
 
@@ -112,7 +112,7 @@ Below you can find searchable, browsable tables containing the raw data used to 
 
 ### Number of downloads
 
-```{r, downloads-tab, echo=FALSE}
+```{r, downloads-tab, echo=FALSE, cache = FALSE}
 all_stats <- select(all_stats, c(3,1,2,4,5)) %>%
     arrange(desc(Date))
 datatable(all_stats, rownames = FALSE,
@@ -125,7 +125,7 @@ datatable(all_stats, rownames = FALSE,
 
 ### Number of support questions
 
-```{r, questions-tab, echo=FALSE}
+```{r, questions-tab, echo=FALSE, cache = FALSE}
 all_posts2 <- all_posts %>%
     bind_rows(github_issues) %>%
     mutate(title = paste0("<a href='", url, "'>", title, "</a>")) %>%
