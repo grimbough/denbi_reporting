@@ -23,7 +23,7 @@ You can view the code used to generate these plots at https://github.com/grimbou
 
 ### Number of downloads
 
-Here we show the number of downloads from unique IP addresses each month
+Here we show the number of downloads from unique IP addresses each month.
 
 ```{r, echo = FALSE, include = FALSE, warning=FALSE, message=FALSE}
 all_stats <- lapply(c('rhdf5', 'Rhdf5lib', 'biomaRt', 'IONiseR', 'BiocWorkflowTools', 'DESeq', 'DESeq2', 'EBImage'), getBiocStats) %>%
@@ -56,6 +56,8 @@ ggplot(all_stats, aes(x = Date, y = Nb_of_distinct_IPs,
 
 ### Number of support questions
 
+Support questions are made in a variety of locations.  Here we track the annual number of posts tagged with the name of our tools at the [Bioconductor Support Site](https://support.bioconductor.org) and [Biostars](https://www.biostars.org).  We also track the number of issues opened on any Github repositories associated with each tool.
+
 ```{r, getPosts, echo = FALSE}
 all_posts <- bind_rows(getPostsByTag(tag = 'biomaRt', site = "bioc", n_pages = 8), 
                        getPostsByTag(tag = 'biomaRt', site = 'biostars', n_pages = 6),
@@ -71,10 +73,13 @@ all_posts <- bind_rows(getPostsByTag(tag = 'biomaRt', site = "bioc", n_pages = 8
                        getPostsByTag(tag = 'DESeq2', site = "bioc", n_pages = 60), 
                        getPostsByTag(tag = 'DESeq2', site = 'biostars', n_pages = 10),
                        getPostsByTag(tag = 'EBImage', site = "bioc", n_pages = 1), 
-                       getPostsByTag(tag = 'EBImage', site = 'biostars', n_pages = 1)) %>%
-    filter(!duplicated(id)) %>%
+                       getPostsByTag(tag = 'EBImage', site = 'biostars', n_pages = 1))
+```
 
-    mutate(url = paste0('https://', url),
+```{r, processPosts, echo = FALSE}
+all_posts <- all_posts %>%
+    filter(!duplicated(id)) %>%
+    mutate(url = stringr::str_replace(url, 'http://', 'https://'),
            software = tag, 
            tag = if_else(grepl(tag, pattern = 'hdf5'), 'rhdf5+Rhdf5lib', tag)) %>%
     mutate(tag = if_else(grepl(tag, pattern = 'DESeq'), 'DESeq+DESeq2', tag))
