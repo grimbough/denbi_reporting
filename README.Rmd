@@ -34,8 +34,56 @@ all_stats <- lapply(c('rhdf5', 'Rhdf5lib', 'biomaRt', 'IONiseR', 'BiocWorkflowTo
     mutate(PackageComb = if_else(grepl(PackageComb, pattern = 'DESeq'), 'DESeq+DESeq2', PackageComb)) 
 ```
 
+```{r}
+
+DE_stats <- read_tsv('DE_download_stats.tab', col_types = 'ccci') %>%
+    mutate(Date = ymd(paste(Year, Month, '01', sep = '-')), Site = 'bioc') %>%
+    mutate(PackageComb = if_else(grepl(Package, pattern = 'hdf5'), 'rhdf5+Rhdf5lib', Package)) %>%
+    mutate(PackageComb = if_else(grepl(PackageComb, pattern = 'DESeq'), 'DESeq+DESeq2', PackageComb)) 
+
+```
+
 ```{r plotDownloads, echo = FALSE, dev='png', warning=FALSE}
+
+all_stats <- all_stats %>% 
+    group_by(PackageComb) %>% 
+    mutate(tmp = max(Nb_of_distinct_IPs)) %>% 
+    ungroup() %>% 
+    mutate(PackageComb = factor(PackageComb, 
+                                levels = unique(PackageComb)[order(unique(tmp), decreasing = TRUE)])) %>%
+    select(-tmp)
+
 ggplot(all_stats, aes(x = Date, y = Nb_of_distinct_IPs, 
+                      fill = as.factor(year(Date)),
+                      color = as.factor(year(Date)),
+                      width = days_in_month(Date))) + 
+    geom_bar(stat = 'identity') +
+    xlab('year') +
+    ylab('Num of distinct IPs') +
+    guides(fill = FALSE, color = FALSE) +
+    theme_bw() +
+    scale_fill_manual(values = rep(c("#A1D99B", "#31A354"), 2))  +
+    scale_color_manual(values = rep(c("#A1D99B", "#31A354"), 2)) +
+    facet_wrap(~ PackageComb, scales = 'free_y') +
+        theme(legend.position="bottom", 
+          legend.text=element_text(size=14),
+          axis.text = element_text(size = 11),
+          title = element_text(size=14),
+          strip.text = element_text(size = 14))
+```
+
+
+```{r plotDownloadsDE, echo = FALSE, dev='png', warning=FALSE}
+## reorder by decreasing download counts
+DE_stats <- DE_stats %>% 
+    group_by(PackageComb) %>% 
+    mutate(tmp = max(Nb_of_distinct_IPs)) %>% 
+    ungroup() %>% 
+    mutate(PackageComb = factor(PackageComb, 
+                                levels = unique(PackageComb)[order(unique(tmp), decreasing = TRUE)])) %>%
+    select(-tmp)
+
+ggplot(DE_stats, aes(x = Date, y = Nb_of_distinct_IPs, 
                       fill = as.factor(year(Date)),
                       color = as.factor(year(Date)),
                       width = days_in_month(Date))) + 
