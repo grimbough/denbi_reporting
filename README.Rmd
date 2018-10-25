@@ -5,6 +5,8 @@ output:
   prettydoc::html_pretty:
     theme: cayman
     highlight: github
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -26,7 +28,15 @@ You can view the code used to generate these plots at https://github.com/grimbou
 Here we show the number of downloads from unique IP addresses each month.
 
 ```{r, echo = FALSE, include = FALSE, warning=FALSE, message=FALSE}
-all_stats <- lapply(c('rhdf5', 'Rhdf5lib', 'biomaRt', 'IONiseR', 'BiocWorkflowTools', 'DESeq', 'DESeq2', 'EBImage'), getBiocStats) %>%
+packages <- c('DESeq2', 'DESeq',
+              'rhdf5', 'Rhdf5lib', 'biomaRt', 
+              'IONiseR', 'BiocWorkflowTools', 
+              'EBImage', 'SIAMCAT',
+              'DEXSeq', 'beachmat')
+```
+
+```{r, echo = FALSE, include = FALSE, warning=FALSE, message=FALSE, cache = FALSE}
+all_stats <- lapply(packages, getBiocStats) %>%
     bind_rows() %>%
     filter(year(Date) >= 2015) %>%
     select(-Year, -Month) %>%
@@ -34,14 +44,6 @@ all_stats <- lapply(c('rhdf5', 'Rhdf5lib', 'biomaRt', 'IONiseR', 'BiocWorkflowTo
     mutate(PackageComb = if_else(grepl(PackageComb, pattern = 'DESeq'), 'DESeq+DESeq2', PackageComb)) 
 ```
 
-```{r}
-
-DE_stats <- read_tsv('DE_download_stats.tab', col_types = 'ccci') %>%
-    mutate(Date = ymd(paste(Year, Month, '01', sep = '-')), Site = 'bioc') %>%
-    mutate(PackageComb = if_else(grepl(Package, pattern = 'hdf5'), 'rhdf5+Rhdf5lib', Package)) %>%
-    mutate(PackageComb = if_else(grepl(PackageComb, pattern = 'DESeq'), 'DESeq+DESeq2', PackageComb)) 
-
-```
 
 ```{r plotDownloads, echo = FALSE, dev='png', warning=FALSE}
 
@@ -73,55 +75,43 @@ ggplot(all_stats, aes(x = Date, y = Nb_of_distinct_IPs,
 ```
 
 
-```{r plotDownloadsDE, echo = FALSE, dev='png', warning=FALSE}
-## reorder by decreasing download counts
-DE_stats <- DE_stats %>% 
-    group_by(PackageComb) %>% 
-    mutate(tmp = max(Nb_of_distinct_IPs)) %>% 
-    ungroup() %>% 
-    mutate(PackageComb = factor(PackageComb, 
-                                levels = unique(PackageComb)[order(unique(tmp), decreasing = TRUE)])) %>%
-    select(-tmp)
-
-ggplot(DE_stats, aes(x = Date, y = Nb_of_distinct_IPs, 
-                      fill = as.factor(year(Date)),
-                      color = as.factor(year(Date)),
-                      width = days_in_month(Date))) + 
-    geom_bar(stat = 'identity') +
-    xlab('year') +
-    ylab('Num of distinct IPs') +
-    guides(fill = FALSE, color = FALSE) +
-    theme_bw() +
-    scale_fill_manual(values = rep(c("#A1D99B", "#31A354"), 2))  +
-    scale_color_manual(values = rep(c("#A1D99B", "#31A354"), 2)) +
-    facet_wrap(~ PackageComb, scales = 'free_y') +
-        theme(legend.position="bottom", 
-          legend.text=element_text(size=14),
-          axis.text = element_text(size = 11),
-          title = element_text(size=14),
-          strip.text = element_text(size = 14))
-```
-
 ### Number of support questions
 
 Support questions are made in a variety of locations.  Here we track the annual number of posts tagged with the name of our tools at the [Bioconductor Support Site](https://support.bioconductor.org) and [Biostars](https://www.biostars.org).  We also track the number of issues opened on any Github repositories associated with each tool.
 
 ```{r, getPosts, echo = FALSE}
-all_posts <- bind_rows(getPostsByTag(tag = 'biomaRt', site = "bioc", n_pages = 8), 
-                       getPostsByTag(tag = 'biomaRt', site = 'biostars', n_pages = 6),
-                       getPostsByTag(tag = 'rhdf5', site = "bioc", n_pages = 2), 
-                       getPostsByTag(tag = 'rhdf5', site = 'biostars', n_pages = 1),
-                       getPostsByTag(tag = 'Rhdf5lib', site = "bioc", n_pages = 1), 
-                       getPostsByTag(tag = 'Rhdf5lib', site = 'biostars', n_pages = 1),
-                       getPostsByTag(tag = 'IONiseR', site = "bioc", n_pages = 1), 
-                       getPostsByTag(tag = 'IONiseR', site = 'biostars', n_pages = 1),
-                       getPostsByTag(tag = 'BiocWorkflowTools', site = "bioc", n_pages = 1),
-                       getPostsByTag(tag = 'DESeq', site = "bioc", n_pages = 20), 
-                       getPostsByTag(tag = 'DESeq', site = 'biostars', n_pages = 10),
-                       getPostsByTag(tag = 'DESeq2', site = "bioc", n_pages = 60), 
-                       getPostsByTag(tag = 'DESeq2', site = 'biostars', n_pages = 10),
-                       getPostsByTag(tag = 'EBImage', site = "bioc", n_pages = 1), 
-                       getPostsByTag(tag = 'EBImage', site = 'biostars', n_pages = 1))
+if(Sys.info()['nodename'] == "spinoza") {
+  
+  registryargs <- batchtoolsRegistryargs(
+    work.dir = "/tmp/",
+    packages = c('httr', 'stringr', 'dplyr', 'lubridate'),
+    namespaces = character(0L),
+    source = c("/g/huber/users/msmith/denbi_reporting/support_stats.R")
+  )
+  
+  param.slurm <- BatchtoolsParam(workers = length(packages) * 2,
+                                 cluster = "slurm", 
+                                 resources = list(ncpus=1, walltime = 600, memory = 200),
+                                 registryargs = registryargs)
+  
+  all_posts <- 
+    bpmapply(FUN = getPostsByTag,
+             tag = rep(packages, each = 2),
+             site = rep(c('bioc', 'biostars'), length(packages)),
+             n_pages = c(65,15,25,15, rep(15, 2*(length(packages)-2))),
+             USE.NAMES = FALSE,
+             BPPARAM = param.slurm) %>%
+    bind_rows()
+} else {
+  
+  all_posts <- 
+    mapply(FUN = getPostsByTag,
+           tag = rep(packages, each = 2),
+           site = rep(c('bioc', 'biostars'), length(packages)),
+           n_pages = c(65,15,25,15, rep(15, 2*(length(packages)-2))),
+           USE.NAMES = FALSE) %>%
+    bind_rows()
+}
 ```
 
 ```{r, processPosts, echo = FALSE}
@@ -167,6 +157,7 @@ Below you can find searchable, browsable tables containing the raw data used to 
 
 ```{r, downloads-tab, echo=FALSE, cache = FALSE}
 all_stats <- select(all_stats, c(3,1,2,4,5)) %>%
+    filter(Date < today()) %>%
     arrange(desc(Date))
 datatable(all_stats, rownames = FALSE,
           extensions = 'Buttons', 
