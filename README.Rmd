@@ -43,6 +43,13 @@ all_stats <- lapply(packages, getBiocStats) %>%
     select(-Year, -Month) %>%
     mutate(PackageComb = if_else(grepl(Package, pattern = 'hdf5'), 'rhdf5+Rhdf5lib', Package)) %>%
     mutate(PackageComb = if_else(grepl(PackageComb, pattern = 'DESeq'), 'DESeq+DESeq2', PackageComb)) 
+
+all_stats_conda <- lapply(packages, getBiocCondaStats) %>%
+    bind_rows() %>%
+    filter(year(Date) >= 2015) %>%
+    select(-year, -month) %>%
+    mutate(PackageComb = if_else(grepl(pkg_name, pattern = 'hdf5'), 'rhdf5+Rhdf5lib', pkg_name)) %>%
+    mutate(PackageComb = if_else(grepl(PackageComb, pattern = 'DESeq'), 'DESeq+DESeq2', PackageComb)) 
 ```
 
 
@@ -63,6 +70,35 @@ ggplot(all_stats, aes(x = Date, y = Nb_of_distinct_IPs,
     geom_bar(stat = 'identity') +
     xlab('year') +
     ylab('Num of distinct IPs') +
+    guides(fill = FALSE, color = FALSE) +
+    theme_bw() +
+    scale_fill_manual(values = rep(c("#A1D99B", "#31A354"), 2))  +
+    scale_color_manual(values = rep(c("#A1D99B", "#31A354"),2)) +
+    facet_wrap(~ PackageComb, scales = 'free_y') +
+        theme(legend.position="bottom", 
+          legend.text=element_text(size=14),
+          axis.text = element_text(size = 11),
+          title = element_text(size=14),
+          strip.text = element_text(size = 14))
+```
+
+```{r plotCondaDownloads, echo = FALSE, dev='png', warning=FALSE, message = FALSE, fig.height=8}
+
+all_stats_conda <- all_stats_conda %>% 
+    group_by(PackageComb) %>% 
+    mutate(tmp = max(count)) %>% 
+    ungroup() %>% 
+    mutate(PackageComb = factor(PackageComb, 
+                                levels = unique(PackageComb)[order(unique(tmp), decreasing = TRUE)])) %>%
+    select(-tmp)
+
+ggplot(all_stats_conda, aes(x = Date, y = count, 
+                      fill = as.factor(year(Date)),
+                      color = as.factor(year(Date)),
+                      width = days_in_month(Date))) + 
+    geom_bar(stat = 'identity') +
+    xlab('year') +
+    ylab('Num of downloads') +
     guides(fill = FALSE, color = FALSE) +
     theme_bw() +
     scale_fill_manual(values = rep(c("#A1D99B", "#31A354"), 2))  +
