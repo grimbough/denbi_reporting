@@ -142,16 +142,19 @@ getGithubIssues <- function(user = 'grimbough', repo = "rhdf5") {
 getBiocStats <- function(package = 'rhdf5') {
     url <- paste0('https://www.bioconductor.org/packages/stats/bioc/',
                  package, '/', package, '_stats.tab', sep = '')
-#url <- paste0('~/',
-#                  package, '_stats.tab.txt', sep = '')
     dl_stats <- read_delim(url, delim = '\t', col_types = c('ccii')) %>% 
         filter(Month != 'all') %>%
         mutate(Date = ymd(paste(Year, Month, '01', sep = '-')), Site = 'bioc', Package = package)
     dl_stats
 }
 
-
-    
+getBiocCondaStats <- function(package = 'rhdf5') {
+    url <- "https://www.huber.embl.de/users/msmith/denbi/bioc_counts.tsv"
+    dl_stats <- read_delim(url, delim = '\t', col_types = c('cici')) %>% 
+        filter(pkg_name == package) %>%
+        mutate(Date = ymd(paste(year, month, '01', sep = '-')), Site = 'bioc', Package = package)
+    dl_stats
+}
 
 
     
