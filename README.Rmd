@@ -104,6 +104,7 @@ ggplot(all_stats_conda, aes(x = Date, y = count,
                       width = days_in_month(Date))) + 
     geom_bar(stat = 'identity') +
     xlab('year') +
+    xlim(c(ymd("2015-01-01"), ceiling_date(max(all_stats_conda$Date)+1, "year"))) +
     ylab('Num of downloads') +
     guides(fill = FALSE, color = FALSE) +
     theme_bw() +
