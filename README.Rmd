@@ -59,22 +59,30 @@ all_stats_conda <- lapply(packages, getBiocCondaStats) %>%
 
 ```{r plotDownloads, echo = FALSE, dev='png', warning=FALSE, message = FALSE, fig.height=8}
 
-all_stats <- all_stats %>% 
-    group_by(PackageComb) %>% 
-    mutate(tmp = max(Nb_of_distinct_IPs)) %>% 
-    ungroup() %>% 
-    mutate(PackageComb = factor(PackageComb, 
-                                levels = unique(PackageComb)[order(tmp, decreasing = TRUE)])) %>%
-    select(-tmp)
+dl_stats <- all_stats %>% 
+    group_by(PackageComb, Date) %>% 
+    summarise(Nb_of_distinct_IPs = sum(Nb_of_distinct_IPs)) %>%
+    ungroup()
 
+fct_levels <- dl_stats %>% 
+  group_by(PackageComb) %>% 
+  summarise(max = max(Nb_of_distinct_IPs)) %>% 
+  arrange(desc(max)) %>% 
+  magrittr::extract2("PackageComb")
+
+dl_stats <- dl_stats %>% 
+  mutate(PackageComb = factor(PackageComb, 
+                                levels = fct_levels))
+         
 nyears <- year(today()) - min(year(all_stats$Date)) + 1
 
-ggplot(all_stats, aes(x = Date, y = Nb_of_distinct_IPs, 
+ggplot(dl_stats, aes(x = Date, y = Nb_of_distinct_IPs, 
                       fill = as.factor(year(Date)),
                       color = as.factor(year(Date)),
                       width = days_in_month(Date))) + 
     geom_bar(stat = 'identity') +
     xlab('year') +
+    xlim(c(ymd("2015-01-01"), ceiling_date(max(all_stats_conda$Date)+1, "year"))) +
     ylab('Num of distinct IPs') +
     guides(fill = FALSE, color = FALSE) +
     theme_bw() +
@@ -91,12 +99,8 @@ ggplot(all_stats, aes(x = Date, y = Nb_of_distinct_IPs,
 ```{r plotCondaDownloads, echo = FALSE, dev='png', warning=FALSE, message = FALSE, fig.height=8}
 
 all_stats_conda <- all_stats_conda %>% 
-    group_by(PackageComb) %>% 
-    mutate(tmp = max(count)) %>% 
-    ungroup() %>% 
     mutate(PackageComb = factor(PackageComb, 
-                                levels = unique(PackageComb)[order(unique(tmp), decreasing = TRUE)])) %>%
-    select(-tmp)
+                                levels = fct_levels))
 
 ggplot(all_stats_conda, aes(x = Date, y = count, 
                       fill = as.factor(year(Date)),
