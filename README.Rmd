@@ -25,7 +25,7 @@ You can view the code used to generate these plots at https://github.com/grimbou
 
 ### Number of downloads
 
-Here we show the number of downloads from unique IP addresses each month.
+Here we show the number of downloads from unique IP addresses each month recorded at www.bioconductor.org.
 
 ```{r definePackages, echo = FALSE, include = FALSE, warning=FALSE, message=FALSE, cache = FALSE}
 packages <- c('DESeq2', 'DESeq',
@@ -55,7 +55,6 @@ all_stats_conda <- lapply(packages, getBiocCondaStats) %>%
     mutate(PackageComb = if_else(grepl(pkg_name, pattern = 'hdf5'), 'rhdf5+Rhdf5lib', pkg_name)) %>%
     mutate(PackageComb = if_else(grepl(PackageComb, pattern = 'DESeq'), 'DESeq+DESeq2', PackageComb)) 
 ```
-
 
 ```{r plotDownloads, echo = FALSE, dev='png', warning=FALSE, message = FALSE, fig.height=8}
 
@@ -95,6 +94,8 @@ ggplot(dl_stats, aes(x = Date, y = Nb_of_distinct_IPs,
           title = element_text(size=14),
           strip.text = element_text(size = 14))
 ```
+
+We also track the number of downloads recorded by conda. 
 
 ```{r plotCondaDownloads, echo = FALSE, dev='png', warning=FALSE, message = FALSE, fig.height=8}
 
@@ -182,7 +183,7 @@ github_issues <- lapply(c('rhdf5', 'Rhdf5lib', 'biomaRt', 'BiocWorkflowTools', '
 ```{r, plotPosts, echo = FALSE, dev='png', warning=FALSE, fig.height=8, cache = FALSE}
 all_posts %>% 
     bind_rows(github_issues) %>%
-    mutate(tag = factor(tag, levels = levels(all_stats$PackageComb))) %>%
+    mutate(tag = factor(tag, levels = fct_levels)) %>%
     filter(year(creation_date) >= 2015) %>% 
     ggplot(aes(fill = site, x = year(creation_date))) + 
     geom_bar() +
@@ -192,7 +193,7 @@ all_posts %>%
     theme_bw() + 
     xlab('Year') +
     ylab('No. of Questions') +
-    facet_wrap(~ tag, scales = 'free_y') + 
+    facet_wrap(~ tag, scales = 'free_y', drop = FALSE) + 
     theme(legend.position="bottom", 
           legend.text=element_text(size=14),
           axis.text = element_text(size = 11),
