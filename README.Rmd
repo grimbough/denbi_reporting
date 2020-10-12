@@ -84,7 +84,7 @@ dl_stats <- dl_stats %>%
   mutate(PackageComb = factor(PackageComb, 
                                 levels = fct_levels))
          
-nyears <- year(today()) - min(year(all_stats$Date)) + 1
+nyears <- year(today()) - min(year(all_stats_bioc$Date)) + 1
 
 ggplot(dl_stats, aes(x = Date, y = Nb_of_distinct_IPs, 
                       fill = as.factor(year(Date)),
