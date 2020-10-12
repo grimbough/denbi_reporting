@@ -24,8 +24,13 @@ jobs:
         r-version: 4.0
 
     - uses: r-lib/actions/setup-pandoc@master
+    
+    - name: Install system libraries
+        if: ${{ runner.os == 'Linux'  }}
+        run: |
+          sudo apt-get install libglpk-dev libxml2-dev libgmp-dev
 
-    - name: Query dependencies
+    - name: Install dependencies
       run: |
         install.packages('BiocManager')
         BiocManager::install(c('rmarkdown', 'prettydoc', 'ggplot', 'tidyverse', 'BiocPkgTools'))
