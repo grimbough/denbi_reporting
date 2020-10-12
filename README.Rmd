@@ -15,6 +15,8 @@ knitr::opts_chunk$set(echo = TRUE, fig.width = 12, fig.height = 6, cache = FALSE
 
 ```{r, loadFunctions, echo=FALSE, include=FALSE, cache=FALSE}
 source('support_stats.R')
+library(BiocPkgTools)
+library(dplyr)
 ```
 
 <a href="http://www.denbi.de"><img src="https://www.denbi.de/templates/nbimaster/img/denbi-logo-color.svg" width="354" align="right"></a>This page collates the number of downloads and user questions for Bioconductor tools supported by the Heidelberg Centre for Human Bioinformatics as part of the German Network for Bioinformatics Infrastructure. 
@@ -36,29 +38,38 @@ packages <- c('DESeq2', 'DESeq',
               'RnBeads', 'YAPSA',
               'ComplexHeatmap',
               'EnrichedHeatmap', 'rGREAT',
-              'HilbertCurve', 'gtrellis'
+              'HilbertCurve', 'gtrellis',
+              'motus', 'ngless'
               )
 ```
 
 ```{r getDownloadCounts, echo = FALSE, include = FALSE, warning=FALSE, message=FALSE, cache = FALSE}
-all_stats <- lapply(packages, getBiocStats) %>%
-    bind_rows() %>%
-    filter(year(Date) >= 2015) %>%
-    select(-Year, -Month) %>%
-    mutate(PackageComb = if_else(grepl(Package, pattern = 'hdf5'), 'rhdf5+Rhdf5lib', Package)) %>%
-    mutate(PackageComb = if_else(grepl(PackageComb, pattern = 'DESeq'), 'DESeq+DESeq2', PackageComb)) 
+tab <- BiocPkgTools::biocDownloadStats()
 
-all_stats_conda <- lapply(packages, getBiocCondaStats) %>%
-    bind_rows() %>%
-    filter(year(Date) >= 2015) %>%
-    select(-year, -month) %>%
-    mutate(PackageComb = if_else(grepl(pkg_name, pattern = 'hdf5'), 'rhdf5+Rhdf5lib', pkg_name)) %>%
-    mutate(PackageComb = if_else(grepl(PackageComb, pattern = 'DESeq'), 'DESeq+DESeq2', PackageComb)) 
+all_stats_bioc <- tab %>%
+  filter(Package %in% packages, Year >= 2015, !is.na(Date)) %>%
+  select(-Year, -Month, -repo) %>%
+  mutate(PackageComb = if_else(grepl(Package, pattern = 'hdf5'), 'rhdf5+Rhdf5lib', Package)) %>%
+  mutate(PackageComb = if_else(grepl(PackageComb, pattern = 'DESeq'), 'DESeq+DESeq2', PackageComb)) 
+  
+tab2 <- bind_rows(
+  getCondaStats(packages, bioc = TRUE),
+  getCondaStats(packages, bioc = FALSE)
+)
+
+all_stats_conda <- tab2 %>%
+  filter(Year >= 2015) %>%
+  select(-Year, -Month) %>%
+  mutate(PackageComb = if_else(grepl(Package, pattern = 'hdf5'), 'rhdf5+Rhdf5lib', Package)) %>%
+  mutate(PackageComb = if_else(grepl(PackageComb, pattern = 'DESeq'), 'DESeq+DESeq2', PackageComb)) %>%
+  mutate(Nb_of_distinct_IPs = Nb_of_downloads)
+
+#all_stats <- bind_rows(all_stats_bioc, all_stats_conda)
 ```
 
 ```{r plotDownloads, echo = FALSE, dev='png', warning=FALSE, message = FALSE, fig.height=8}
 
-dl_stats <- all_stats %>% 
+dl_stats <- all_stats_bioc %>% 
     group_by(PackageComb, Date) %>% 
     summarise(Nb_of_distinct_IPs = sum(Nb_of_distinct_IPs)) %>%
     ungroup()
@@ -99,11 +110,17 @@ We also track the number of downloads recorded by conda.
 
 ```{r plotCondaDownloads, echo = FALSE, dev='png', warning=FALSE, message = FALSE, fig.height=8}
 
+fct_levels <- all_stats_conda %>% 
+  group_by(PackageComb) %>% 
+  summarise(max = max(Nb_of_downloads)) %>% 
+  arrange(desc(max)) %>% 
+  magrittr::extract2("PackageComb")
+
 all_stats_conda <- all_stats_conda %>% 
     mutate(PackageComb = factor(PackageComb, 
                                 levels = fct_levels))
 
-ggplot(all_stats_conda, aes(x = Date, y = count, 
+ggplot(all_stats_conda, aes(x = Date, y = Nb_of_downloads, 
                       fill = as.factor(year(Date)),
                       color = as.factor(year(Date)),
                       width = days_in_month(Date))) + 
@@ -128,7 +145,7 @@ ggplot(all_stats_conda, aes(x = Date, y = count,
 
 Support questions are made in a variety of locations.  Here we track the annual number of posts tagged with the name of our tools at the [Bioconductor Support Site](https://support.bioconductor.org) and [Biostars](https://www.biostars.org).  We also track the number of issues opened on any Github repositories associated with each tool. 
 
-```{r, getPosts, echo = FALSE, include = FALSE, message=FALSE, warning=FALSE, cache = FALSE}
+```{r, getPosts, echo = FALSE, include = FALSE, message=FALSE, warning=FALSE, cache = FALSE, eval = FALSE}
 ## submit jobs to the cluster if running on spinoza
 if(Sys.info()['nodename'] %in% c("spinoza.embl.de", "seneca.embl.de")) {
     
@@ -166,7 +183,7 @@ if(Sys.info()['nodename'] %in% c("spinoza.embl.de", "seneca.embl.de")) {
 }
 ```
 
-```{r, processPosts, echo = FALSE, cache = FALSE}
+```{r, processPosts, echo = FALSE, cache = FALSE, eval = FALSE}
 all_posts <- all_posts %>%
     filter(!duplicated(id)) %>%
     mutate(url = stringr::str_replace(url, 'http://', 'https://'),
@@ -180,7 +197,7 @@ github_issues <- lapply(c('rhdf5', 'Rhdf5lib', 'biomaRt', 'BiocWorkflowTools', '
     mutate(software = tag, tag = if_else(grepl(tag, pattern = 'hdf5'), 'rhdf5+Rhdf5lib', tag))
 ```
 
-```{r, plotPosts, echo = FALSE, dev='png', warning=FALSE, fig.height=8, cache = FALSE}
+```{r, plotPosts, echo = FALSE, dev='png', warning=FALSE, fig.height=8, cache = FALSE, eval = FALSE}
 all_posts %>% 
     bind_rows(github_issues) %>%
     mutate(tag = factor(tag, levels = fct_levels)) %>%
@@ -204,7 +221,7 @@ all_posts %>%
 
 # Raw Data
 
-Below you can find searchable, browsable tables containing the raw data used to generate the plots shown above.  Links to download tab separated text versions of this data are also provided.
+Below you can find searchable tables containing the raw data used to generate the plots shown above.  Links to download tab separated text versions of this data are also provided.
 
 ### Number of downloads
 
@@ -222,7 +239,7 @@ datatable(all_stats, rownames = FALSE,
 
 ### Number of support questions
 
-```{r, questions-tab, echo=FALSE, cache = FALSE}
+```{r, questions-tab, echo=FALSE, cache = FALSE, eval = FALSE}
 all_posts2 <- all_posts %>%
     bind_rows(github_issues) %>%
     mutate(title = paste0("<a href='", url, "'>", title, "</a>")) %>%

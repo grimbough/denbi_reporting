@@ -1,0 +1,41 @@
+on:
+  push:
+    branches:
+      - master
+  schedule:
+  # should run at midnight 20th day of each month
+    - cron:  '0 0 1 * *'
+
+name: update-count-tables
+
+jobs:
+  update-count-tables:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v2
+
+    - uses: r-lib/actions/setup-r@master
+      with:
+        r-version: 4.0
+
+    - uses: r-lib/actions/setup-pandoc@master
+
+    - name: Query dependencies
+      run: |
+        install.packages('BiocManager')
+        BiocManager::install(c('rmarkdown', 'prettydoc', 'ggplot', 'tidyverse', 'BiocPkgTools'))
+      shell: Rscript {0}
+
+    - name: Process new counts
+      run: rmarkdown::render("README.Rmd")
+      shell: Rscript {0}
+      
+    - name: commit updated tables
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add README.html
+        git commit -m "`date +%B` update" || echo "No changes to commit"
+        git push origin master || echo "No changes to commit"
+      
