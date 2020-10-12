@@ -10,7 +10,11 @@ name: update-count-tables
 
 jobs:
   update-count-tables:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
+    
+    env:
+      R_REMOTES_NO_ERRORS_FROM_WARNINGS: true
+      CRAN: "https://packagemanager.rstudio.com/all/__linux__/bionic/latest"
     
     steps:
     - uses: actions/checkout@v2

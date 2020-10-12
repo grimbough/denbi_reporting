@@ -148,12 +148,23 @@ getBiocStats <- function(package = 'rhdf5') {
     dl_stats
 }
 
-getBiocCondaStats <- function(package = 'rhdf5') {
-    url <- "https://www.huber.embl.de/users/msmith/denbi/bioc_counts.tsv"
-    dl_stats <- read_delim(url, delim = '\t', col_types = c('cici')) %>% 
-        filter(pkg_name == package) %>%
-        mutate(Date = ymd(paste(year, month, '01', sep = '-')), Site = 'bioc', Package = package)
-    dl_stats
+getCondaStats <- function(packages = 'rhdf5', bioc = TRUE) {
+    
+    temp_file <- tempfile()
+    url <- ifelse (bioc, 
+                   'https://github.com/grimbough/anaconda-download-stats/blob/master/rdata/bioc_counts.rds?raw=true',
+                   'https://github.com/grimbough/anaconda-download-stats/blob/master/rdata/all_counts.rds?raw=true'
+    )  
+    download.file(url, destfile = temp_file)
+    
+    tab <- readRDS(temp_file)
+    if(bioc != TRUE) {
+        tab <- tab %>% rename(Package = pkg_name, Year = year, 
+                              Month = month, Nb_of_downloads = counts)
+    }
+    tab %>% 
+        dplyr::filter(Package %in% packages) %>%
+        mutate(Date = ymd(paste(Year, Month, '01', sep = '-')))
 }
 
 
