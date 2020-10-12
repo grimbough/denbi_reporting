@@ -226,7 +226,7 @@ Below you can find searchable tables containing the raw data used to generate th
 ### Number of downloads
 
 ```{r, downloads-tab, echo=FALSE, cache = FALSE}
-all_stats <- select(all_stats, c(3,1,2,4,5)) %>%
+all_stats <- select(all_stats_bioc, c(3,1,2,4,5)) %>%
     filter(Date < today()) %>%
     arrange(desc(Date)) 
 datatable(all_stats, rownames = FALSE,
