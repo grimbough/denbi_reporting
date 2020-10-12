@@ -26,9 +26,8 @@ jobs:
     - uses: r-lib/actions/setup-pandoc@master
     
     - name: Install system libraries
-        if: ${{ runner.os == 'Linux'  }}
-        run: |
-          sudo apt-get install libglpk-dev libxml2-dev libgmp-dev
+      run: |
+        sudo apt-get install libglpk-dev libxml2-dev libgmp-dev
 
     - name: Install dependencies
       run: |
