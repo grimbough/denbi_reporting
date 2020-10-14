@@ -241,7 +241,7 @@ datatable(all_stats, rownames = FALSE,
 
 ### Anaconda
 
-```{r, downloads-tab, echo=FALSE, cache = FALSE}
+```{r, downloads-tab-2, echo=FALSE, cache = FALSE}
 all_stats <- select(all_stats_conda, c(3,1,2)) %>%
     filter(Date < today()) %>%
     arrange(desc(Date)) 
