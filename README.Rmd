@@ -190,7 +190,9 @@ all_posts <- all_posts %>%
            software = tag, 
            tag = if_else(grepl(tag, pattern = 'hdf5'), 'rhdf5+Rhdf5lib', tag)) %>%
     mutate(tag = if_else(grepl(tag, pattern = 'DESeq'), 'DESeq+DESeq2', tag))
+```
 
+```{r, github_issuesecho = FALSE, cache = FALSE, eval = FALSE}
 github_issues <- lapply(c('rhdf5', 'Rhdf5lib', 'biomaRt', 'BiocWorkflowTools', 'IONiseR'),
                         getGithubIssues, user = 'grimbough') %>%
     bind_rows(getGithubIssues('EBImage', user = 'aoles')) %>% 
@@ -255,7 +257,7 @@ datatable(all_stats, rownames = FALSE,
 
 ### Number of support questions
 
-```{r, questions-tab, echo=FALSE, cache = FALSE, eval = TRUE}
+```{r, questions-tab, echo=FALSE, cache = FALSE, eval = FALSE}
 all_posts2 <- all_posts %>%
     bind_rows(github_issues) %>%
     mutate(title = paste0("<a href='", url, "'>", title, "</a>")) %>%
