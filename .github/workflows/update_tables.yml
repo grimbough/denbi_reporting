@@ -41,7 +41,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        install.packages('BiocManager')
+        install.packages(c('BiocManager', 'remotes'))
         BiocManager::install(c('rmarkdown', 'prettydoc', 'ggplot', 'tidyverse', 'seandavi/BiocPkgTools'))
       shell: Rscript {0}
 
