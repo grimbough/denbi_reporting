@@ -42,7 +42,7 @@ jobs:
     - name: Install dependencies
       run: |
         install.packages(c('BiocManager', 'remotes'))
-        BiocManager::install(c('rmarkdown', 'prettydoc', 'ggplot', 'tidyverse', 'seandavi/BiocPkgTools'))
+        BiocManager::install(c('rmarkdown', 'prettydoc', 'ggplot', 'tidyverse', 'seandavi/BiocPkgTools', 'BiocParallel'))
       shell: Rscript {0}
 
     - name: Process new counts
