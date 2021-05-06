@@ -212,7 +212,7 @@ github_issues <- lapply(c('rhdf5', 'Rhdf5lib', 'rhdf5filters', 'biomaRt', 'BiocW
     mutate(software = tag, tag = if_else(grepl(tag, pattern = 'hdf5'), 'rhdf5+Rhdf5lib', tag))
 ```
 
-```{r, plotPosts, echo = FALSE, dev='png', warning=FALSE, fig.height=8, cache = FALSE, eval = FALSE}
+```{r, plotPosts, echo = FALSE, dev='png', warning=FALSE, fig.height=8, cache = FALSE, eval = TRUE}
 all_posts %>% 
     bind_rows(github_issues) %>%
     mutate(tag = factor(tag, levels = fct_levels)) %>%
