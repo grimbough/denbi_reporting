@@ -6,7 +6,7 @@ library(ggplot2)
 library(readr)
 library(DT)
 
-getPostByAPI <- function(site, post_id) {
+getPostFromID <- function(site, post_id) {
     
     url_root <- switch(tolower(site), 
                        bioc = 'https://support.bioconductor.org',
@@ -14,11 +14,50 @@ getPostByAPI <- function(site, post_id) {
                        NULL)
     if(is.null(url_root)) { stop('Unknown site') }
     
-    post_url <- paste0(url_root, '/api/post/', post_id)
+    post_url <- paste0(url_root, '/api/post/', post_id, '/')
     
     res <- content(httr::GET(url = post_url), type = 'application/json')
     
-    return(as_tibble(res[ c('creation_date', 'id', 'root_id', 'title', 'url') ]))
+    res <- as_tibble(res[ c('creation_date', 'uid', 'title', 'url') ]) %>%
+        mutate(creation_date = as_datetime(creation_date))
+
+    return(res)
+}
+
+getPostIDsForTag <- function(site, tag) {
+    
+    url_root <- switch(tolower(site), 
+                       bioc = 'https://support.bioconductor.org',
+                       biostars = 'https://www.biostars.org',
+                       NULL)
+    if(is.null(url_root)) { stop('Unknown site') }
+    
+    post_url <- paste0(url_root, '/api/tag/', tag, '/')
+    
+    res <- content(httr::GET(url = post_url), type = 'application/json')
+    
+    ids <- unlist(res)
+    return(ids)
+}
+
+getPosts <- function(site, tag, old_posts) {
+    
+    ids <- unlist(getPostIDsForTag(site = site, tag = tag))
+    
+    if(!is.null(old_posts)) {
+        these_old_posts <- old_posts %>%
+            filter(tag == !!tag, site == !!site)
+        new_ids <- which(!ids %in% these_old_posts$uid)
+    } else {
+        these_old_posts <- NULL
+        new_ids <- ids
+    }
+    
+    res <- dplyr::bind_rows(lapply(new_ids, getPostFromID, site = site)) %>%
+        mutate(tag = tag, site = site) %>%
+        bind_rows(these_old_posts)
+    res
+    
 }
 
 getPostsByTag <- function(site = "bioc", tag = "biomaRt", n_pages = 10) {
@@ -33,7 +72,7 @@ getPostsByTag <- function(site = "bioc", tag = "biomaRt", n_pages = 10) {
         if(is.null(url_root)) { stop('Unknown site') }
         
         url <- paste0(url_root, '/t/', tag, '/',
-                      '?sort=Creation&limit=All%20time&answered=all&page=', x)
+                      '?sort=creation&limit=all%20time&answered=all&page=', x)
         
         page <- httr::GET(url)
         
@@ -71,17 +110,15 @@ getPostsByTag <- function(site = "bioc", tag = "biomaRt", n_pages = 10) {
     
 }
 
-getPostsByUser <- function(site = 'bioc', user_id = '3986', n_pages = 20) {
-    
-    post_ids <- lapply(seq_len(n_pages), FUN = function(x) {
+
+getBiocPostsByTag <- function(tag = "biomaRt", pages = 1:2) {
+
+    post_ids <- lapply(pages, FUN = function(x) {
         
-        url_root <- switch(tolower(site), 
-                           bioc = 'https://support.bioconductor.org',
-                           biostars = 'https://www.biostars.org',
-                           NULL)
+        url_root <- 'https://support.bioconductor.org'
         
-        url <- paste0(url_root, '/u/', user_id, '/',
-                      '?sort=Creation&limit=All%20time&answered=all&page=', x)
+        url <- paste0(url_root,
+                      '?type=latest&order=creation&tag=', tag, '&page=', x)
         
         page <- httr::GET(url)
         
@@ -90,31 +127,34 @@ getPostsByUser <- function(site = 'bioc', user_id = '3986', n_pages = 20) {
             return(NULL)
         } else {
             
-            tmp <- tempfile()
-            write_html(content(page), tmp)
-            page <- readLines(tmp)
+            tf <- tempfile()
+            writeLines(content(page, as = "text"), con = tf)
+
+            html <- xml2::read_html(tf)
             
-            post_lines <- page[grep(page, pattern = 'post-title')+4]
-            
+            post_lines <- xml2::xml_find_all(html, 
+                                      xpath = "//a[contains(@class, 'mini blue title header')]")
+
             if(!length(post_lines)) {
                 return(NULL)
             } else {
-                
-                ids <- str_match(post_lines, '/p/[0-9]+/#([0-9]+)')[,2]
+                ids <- str_match(as.character(post_lines), '/p/(p?[0-9]+)/')[,2]
                 ids <- ids[ which(!is.na(ids)) ]
-                return(ids)
+                ids
             }
         }
     })
     
-    if(is.null(post_ids)) {
+    if(is.null(unlist(post_ids))) {
         return(NULL)
     } else {
-    all_posts <- lapply(unlist(post_ids), getPostByAPI, site = site) %>%
-        bind_rows() %>%
-        mutate(creation_date = as.Date(creation_date), site = site)
+        all_posts <- lapply(unlist(post_ids), getPostByAPI, site = 'bioc') %>%
+            bind_rows() %>%
+            mutate(creation_date = as.Date(creation_date), 
+                   site = 'bioc',
+                   tag = tag)
+        return(all_posts)
     }
-    
 }
 
 getGithubIssues <- function(user = 'grimbough', repo = "rhdf5") {
@@ -152,8 +192,8 @@ getCondaStats <- function(packages = 'rhdf5', bioc = TRUE) {
     
     temp_file <- tempfile()
     url <- ifelse (bioc, 
-                   'https://github.com/grimbough/anaconda-download-stats/blob/master/rdata/bioc_counts.rds?raw=true',
-                   'https://github.com/grimbough/anaconda-download-stats/blob/master/rdata/all_counts.rds?raw=true'
+                   'https://github.com/grimbough/anaconda-download-stats/raw/master/rdata/bioc_counts.rds',
+                   'https://github.com/grimbough/anaconda-download-stats/raw/master/rdata/all_counts.rds'
     )  
     download.file(url, destfile = temp_file)
     

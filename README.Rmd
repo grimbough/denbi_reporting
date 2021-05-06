@@ -30,46 +30,63 @@ You can view the code used to generate these plots at https://github.com/grimbou
 Here we show the number of downloads from unique IP addresses each month recorded at www.bioconductor.org.
 
 ```{r definePackages, echo = FALSE, include = FALSE, warning=FALSE, message=FALSE, cache = FALSE}
-packages <- c('DESeq2', 'DESeq',
-              'rhdf5', 'Rhdf5lib', 'biomaRt', 
-              'IONiseR', 'BiocWorkflowTools', 
-              'EBImage', 'SIAMCAT',
-              'DEXSeq', 'beachmat',
-              'RnBeads', 'YAPSA',
-              'ComplexHeatmap',
-              'EnrichedHeatmap', 'rGREAT',
-              'HilbertCurve', 'gtrellis',
-              'motus', 'ngless'
-              )
+packages <- dplyr::tribble(
+  ~pkg, ~in_bioc, 
+  'DESeq2', TRUE,
+  'rhdf5',  TRUE,
+  'Rhdf5lib', TRUE,
+  'biomaRt', TRUE,
+  'IONiseR', TRUE,
+  'BiocWorkflowTools', TRUE,
+  'EBImage', TRUE,
+  'SIAMCAT', TRUE,
+  'DEXSeq', TRUE,
+  'beachmat', TRUE,
+  'IHW', TRUE,
+  'RnBeads', TRUE,
+  'YAPSA', TRUE,
+  'ComplexHeatmap', TRUE,
+  'EnrichedHeatmap', TRUE,
+  'rGREAT', TRUE,
+  'HilbertCurve', TRUE,
+  'gtrellis', TRUE,
+  'motus', FALSE,
+  'ngless', FALSE,
+  'MOFA', TRUE,
+  'slalom', TRUE,
+  'OmnipathR', TRUE,
+  'circlize', FALSE,
+  'dorothea', TRUE,
+  'progeny', TRUE)
 ```
 
 ```{r getDownloadCounts, echo = FALSE, include = FALSE, warning=FALSE, message=FALSE, cache = FALSE}
 tab <- BiocPkgTools::biocDownloadStats()
+tab2 <- BiocPkgTools::anacondaDownloadStats()
+tab3 <- getCondaStats(packages, bioc = FALSE)
 
-all_stats_bioc <- tab %>%
-  filter(Package %in% packages, Year >= 2015, !is.na(Date)) %>%
+bioc_stats <- tab %>%
+  filter(Package %in% packages$pkg, Year >= 2015, !is.na(Date)) %>%
   select(-Year, -Month, -repo) %>%
-  mutate(PackageComb = if_else(grepl(Package, pattern = 'hdf5'), 'rhdf5+Rhdf5lib', Package)) %>%
-  mutate(PackageComb = if_else(grepl(PackageComb, pattern = 'DESeq'), 'DESeq+DESeq2', PackageComb)) 
-  
-tab2 <- bind_rows(
-  getCondaStats(packages, bioc = TRUE),
-  getCondaStats(packages, bioc = FALSE)
-)
+  mutate(PackageComb = if_else(grepl(Package, pattern = 'hdf5'), 'rhdf5+Rhdf5lib', Package))
 
-all_stats_conda <- tab2 %>%
+conda_stats_bioc <- tab2 %>%   
+  filter(Package %in% packages$pkg, Year >= 2015, !is.na(Date)) %>%
+  select(-Year, -Month, -repo) %>%
+  mutate(PackageComb = if_else(grepl(Package, pattern = 'hdf5'), 'rhdf5+Rhdf5lib', Package))
+
+conda_stats_notbioc <- tab3 %>%
   filter(Year >= 2015) %>%
   select(-Year, -Month) %>%
-  mutate(PackageComb = if_else(grepl(Package, pattern = 'hdf5'), 'rhdf5+Rhdf5lib', Package)) %>%
-  mutate(PackageComb = if_else(grepl(PackageComb, pattern = 'DESeq'), 'DESeq+DESeq2', PackageComb)) %>%
+  mutate(PackageComb = Package) %>%
   mutate(Nb_of_distinct_IPs = Nb_of_downloads)
 
-#all_stats <- bind_rows(all_stats_bioc, all_stats_conda)
+conda_stats <- bind_rows(conda_stats_bioc, conda_stats_notbioc)
 ```
 
 ```{r plotDownloads, echo = FALSE, dev='png', warning=FALSE, message = FALSE, fig.height=8}
 
-dl_stats <- all_stats_bioc %>% 
+dl_stats <- bioc_stats %>% 
     group_by(PackageComb, Date) %>% 
     summarise(Nb_of_distinct_IPs = sum(Nb_of_distinct_IPs)) %>%
     ungroup()
@@ -84,7 +101,7 @@ dl_stats <- dl_stats %>%
   mutate(PackageComb = factor(PackageComb, 
                                 levels = fct_levels))
          
-nyears <- year(today()) - min(year(all_stats_bioc$Date)) + 1
+nyears <- year(today()) - min(year(bioc_stats$Date)) + 1
 
 ggplot(dl_stats, aes(x = Date, y = Nb_of_distinct_IPs, 
                       fill = as.factor(year(Date)),
@@ -92,7 +109,7 @@ ggplot(dl_stats, aes(x = Date, y = Nb_of_distinct_IPs,
                       width = days_in_month(Date))) + 
     geom_bar(stat = 'identity') +
     xlab('year') +
-    xlim(c(ymd("2015-01-01"), ceiling_date(max(all_stats_conda$Date)+1, "year"))) +
+    xlim(c(ymd("2015-01-01"), ceiling_date(max(bioc_stats$Date)+1, "year"))) +
     ylab('Num of distinct IPs') +
     guides(fill = FALSE, color = FALSE) +
     theme_bw() +
@@ -106,32 +123,34 @@ ggplot(dl_stats, aes(x = Date, y = Nb_of_distinct_IPs,
           strip.text = element_text(size = 14))
 ```
 
-We also track the number of downloads recorded by conda. 
+We also track the number of downloads recorded by conda. *Download counts provided by Anaconda only became available in 2017.*
 
 ```{r plotCondaDownloads, echo = FALSE, dev='png', warning=FALSE, message = FALSE, fig.height=8}
 
-fct_levels <- all_stats_conda %>% 
+fct_levels <- conda_stats %>% 
   group_by(PackageComb) %>% 
   summarise(max = max(Nb_of_downloads)) %>% 
   arrange(desc(max)) %>% 
   magrittr::extract2("PackageComb")
 
-all_stats_conda <- all_stats_conda %>% 
+conda_stats <- conda_stats %>% 
     mutate(PackageComb = factor(PackageComb, 
                                 levels = fct_levels))
 
-ggplot(all_stats_conda, aes(x = Date, y = Nb_of_downloads, 
+nyears <- year(today()) - min(year(bioc_stats$Date)) + 1
+
+ggplot(conda_stats, aes(x = Date, y = Nb_of_downloads, 
                       fill = as.factor(year(Date)),
                       color = as.factor(year(Date)),
                       width = days_in_month(Date))) + 
     geom_bar(stat = 'identity') +
     xlab('year') +
-    xlim(c(ymd("2015-01-01"), ceiling_date(max(all_stats_conda$Date)+1, "year"))) +
+    xlim(c(ymd("2015-01-01"), ceiling_date(max(conda_stats$Date)+1, "year"))) +
     ylab('Num of downloads') +
     guides(fill = FALSE, color = FALSE) +
     theme_bw() +
-    scale_fill_manual(values = rep(c("#A1D99B", "#31A354"), 2))  +
-    scale_color_manual(values = rep(c("#A1D99B", "#31A354"),2)) +
+    scale_fill_manual(values = rep(c("#A1D99B", "#31A354"), 20)[seq_len(nyears)])  +
+    scale_color_manual(values = rep(c("#A1D99B", "#31A354"),20)[seq_len(nyears)]) +
     facet_wrap(~ PackageComb, scales = 'free_y') +
         theme(legend.position="bottom", 
           legend.text=element_text(size=14),
@@ -146,56 +165,50 @@ ggplot(all_stats_conda, aes(x = Date, y = Nb_of_downloads,
 Support questions are made in a variety of locations.  Here we track the annual number of posts tagged with the name of our tools at the [Bioconductor Support Site](https://support.bioconductor.org) and [Biostars](https://www.biostars.org).  We also track the number of issues opened on any Github repositories associated with each tool. 
 
 ```{r, getPosts, echo = FALSE, include = FALSE, message=FALSE, warning=FALSE, cache = FALSE, eval = TRUE}
-## submit jobs to the cluster if running on spinoza
-if(Sys.info()['nodename'] %in% c("spinoza.embl.de", "seneca.embl.de")) {
-    
-  library(BiocParallel)
-  
-  registryargs <- batchtoolsRegistryargs(
-    work.dir = "/tmp/",
-    packages = c('httr', 'stringr', 'dplyr', 'lubridate'),
-    namespaces = character(0L),
-    source = c("/g/huber/users/msmith/denbi_reporting/support_stats.R")
-  )
-  
-  param.slurm <- BatchtoolsParam(workers = length(packages) * 2,
-                                 cluster = "slurm", 
-                                 resources = list(ncpus=1, walltime = 600, memory = 200),
-                                 registryargs = registryargs)
-  
-  all_posts <- 
-    bpmapply(FUN = getPostsByTag,
-             tag = rep(packages, each = 2),
-             site = rep(c('bioc', 'biostars'), length(packages)),
-             n_pages = c(65,15,25,15, rep(15, 2*(length(packages)-2))),
-             USE.NAMES = FALSE,
-             BPPARAM = param.slurm) %>%
-    bind_rows()
+library(BiocParallel)
+
+if(nzchar(Sys.getenv("GITHUB_ACTIONS"))) {
+  workers <- 2
 } else {
+  workers <- 8
+}
+mcparam <- MulticoreParam(
+  workers = workers
+)
+
+if(file.exists("posts.rds")) {
+  old_posts <- readRDS("posts.rds")
+} else {
+  old_posts <- NULL
+}
   
   all_posts <- 
-    mapply(FUN = getPostsByTag,
-           tag = rep(packages, each = 2),
-           site = rep(c('bioc', 'biostars'), length(packages)),
-           n_pages = c(65,15,25,15, rep(15, 2*(length(packages)-2))),
-           USE.NAMES = FALSE) %>%
+    bpmapply(FUN = getPosts,
+             tag = rep(packages$pkg, each = 2),
+             site = rep(c('bioc', 'biostars'), length(packages)),
+             MoreArgs = list(old_posts = old_posts),
+             USE.NAMES = FALSE,
+             SIMPLIFY = FALSE,
+             BPPARAM = mcparam) %>%
     bind_rows()
-}
+  
+saveRDS(all_posts, file = "posts.rds")
 ```
 
 ```{r, processPosts, echo = FALSE, cache = FALSE, eval = TRUE}
 all_posts <- all_posts %>%
-    filter(!duplicated(id)) %>%
+    filter(!duplicated(uid)) %>%
     mutate(url = stringr::str_replace(url, 'http://', 'https://'),
            software = tag, 
            tag = if_else(grepl(tag, pattern = 'hdf5'), 'rhdf5+Rhdf5lib', tag)) %>%
     mutate(tag = if_else(grepl(tag, pattern = 'DESeq'), 'DESeq+DESeq2', tag))
 ```
 
-```{r, github_issuesecho = FALSE, cache = FALSE, eval = FALSE}
-github_issues <- lapply(c('rhdf5', 'Rhdf5lib', 'biomaRt', 'BiocWorkflowTools', 'IONiseR'),
+```{r, github_issues, echo = FALSE, cache = FALSE, eval = FALSE}
+github_issues <- lapply(c('rhdf5', 'Rhdf5lib', 'rhdf5filters', 'biomaRt', 'BiocWorkflowTools', 'IONiseR'),
                         getGithubIssues, user = 'grimbough') %>%
     bind_rows(getGithubIssues('EBImage', user = 'aoles')) %>% 
+    bind_rows(getGithubIssues('motus', user = 'motu-tool')) %>% 
     mutate(software = tag, tag = if_else(grepl(tag, pattern = 'hdf5'), 'rhdf5+Rhdf5lib', tag))
 ```
 
@@ -230,7 +243,7 @@ Below you can find searchable tables containing the raw data used to generate th
 ### bioconductor.org
 
 ```{r, downloads-tab, echo=FALSE, cache = FALSE}
-all_stats <- select(all_stats_bioc, c(4,1,2,3)) %>%
+all_stats <- select(bioc_stats, c(Date,Package,Nb_of_distinct_IPs,Nb_of_downloads)) %>%
     filter(Date < today()) %>%
     arrange(desc(Date)) 
 datatable(all_stats, rownames = FALSE,
@@ -244,7 +257,7 @@ datatable(all_stats, rownames = FALSE,
 ### Anaconda
 
 ```{r, downloads-tab-2, echo=FALSE, cache = FALSE}
-all_stats <- select(all_stats_conda, c(3,1,2)) %>%
+all_stats <- select(conda_stats, c(Date, Package, Nb_of_downloads)) %>%
     filter(Date < today()) %>%
     arrange(desc(Date)) 
 datatable(all_stats, rownames = FALSE,
@@ -261,7 +274,7 @@ datatable(all_stats, rownames = FALSE,
 all_posts2 <- all_posts %>%
     bind_rows(github_issues) %>%
     mutate(title = paste0("<a href='", url, "'>", title, "</a>")) %>%
-    select( c(1,4,6,8)) %>%
+    select( c(tag,creation_date, site, title)) %>%
     arrange(desc(creation_date))
 
 datatable(all_posts2, rownames = FALSE, escape = -2,
