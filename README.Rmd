@@ -204,7 +204,7 @@ all_posts <- all_posts %>%
     mutate(tag = if_else(grepl(tag, pattern = 'DESeq'), 'DESeq+DESeq2', tag))
 ```
 
-```{r, github_issues, echo = FALSE, cache = FALSE, eval = FALSE}
+```{r, github_issues, echo = FALSE, cache = FALSE, eval = TRUE}
 github_issues <- lapply(c('rhdf5', 'Rhdf5lib', 'rhdf5filters', 'biomaRt', 'BiocWorkflowTools', 'IONiseR'),
                         getGithubIssues, user = 'grimbough') %>%
     bind_rows(getGithubIssues('EBImage', user = 'aoles')) %>% 
