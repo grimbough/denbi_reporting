@@ -33,11 +33,10 @@ Here we show the number of downloads from unique IP addresses each month recorde
 packages <- dplyr::tribble(
   ~pkg, ~in_bioc, 
   'DESeq2', TRUE,
+  'biomaRt', TRUE,
   'rhdf5',  TRUE,
   'Rhdf5lib', TRUE,
-  'biomaRt', TRUE,
-  'IONiseR', TRUE,
-  'BiocWorkflowTools', TRUE,
+  'ComplexHeatmap', TRUE,
   'EBImage', TRUE,
   'SIAMCAT', TRUE,
   'DEXSeq', TRUE,
@@ -45,7 +44,8 @@ packages <- dplyr::tribble(
   'IHW', TRUE,
   'RnBeads', TRUE,
   'YAPSA', TRUE,
-  'ComplexHeatmap', TRUE,
+  'IONiseR', TRUE,
+  'BiocWorkflowTools', TRUE,
   'EnrichedHeatmap', TRUE,
   'rGREAT', TRUE,
   'HilbertCurve', TRUE,
@@ -58,6 +58,10 @@ packages <- dplyr::tribble(
   'circlize', FALSE,
   'dorothea', TRUE,
   'progeny', TRUE)
+
+fct_levels <- packages %>% 
+  mutate(PackageComb = if_else(grepl(pkg, pattern = 'hdf5'), 'rhdf5+Rhdf5lib', pkg)) %>%
+  magrittr::extract2("PackageComb") %>% unique()
 ```
 
 ```{r getDownloadCounts, echo = FALSE, include = FALSE, warning=FALSE, message=FALSE, cache = FALSE}
@@ -91,12 +95,6 @@ dl_stats <- bioc_stats %>%
     summarise(Nb_of_distinct_IPs = sum(Nb_of_distinct_IPs)) %>%
     ungroup()
 
-fct_levels <- dl_stats %>% 
-  group_by(PackageComb) %>% 
-  summarise(max = max(Nb_of_distinct_IPs)) %>% 
-  arrange(desc(max)) %>% 
-  magrittr::extract2("PackageComb")
-
 dl_stats <- dl_stats %>% 
   mutate(PackageComb = factor(PackageComb, 
                                 levels = fct_levels))
@@ -126,12 +124,6 @@ ggplot(dl_stats, aes(x = Date, y = Nb_of_distinct_IPs,
 We also track the number of downloads recorded by conda. *Download counts provided by Anaconda only became available in 2017.*
 
 ```{r plotCondaDownloads, echo = FALSE, dev='png', warning=FALSE, message = FALSE, fig.height=8}
-
-fct_levels <- conda_stats %>% 
-  group_by(PackageComb) %>% 
-  summarise(max = max(Nb_of_downloads)) %>% 
-  arrange(desc(max)) %>% 
-  magrittr::extract2("PackageComb")
 
 conda_stats <- conda_stats %>% 
     mutate(PackageComb = factor(PackageComb, 
@@ -200,8 +192,7 @@ all_posts <- all_posts %>%
     filter(!duplicated(uid)) %>%
     mutate(url = stringr::str_replace(url, 'http://', 'https://'),
            software = tag, 
-           tag = if_else(grepl(tag, pattern = 'hdf5'), 'rhdf5+Rhdf5lib', tag)) %>%
-    mutate(tag = if_else(grepl(tag, pattern = 'DESeq'), 'DESeq+DESeq2', tag))
+           tag = if_else(grepl(tag, pattern = 'hdf5'), 'rhdf5+Rhdf5lib', tag)) 
 ```
 
 ```{r, github_issues, echo = FALSE, cache = FALSE, eval = TRUE}
@@ -214,11 +205,14 @@ github_issues <- lapply(c('rhdf5', 'Rhdf5lib', 'rhdf5filters', 'biomaRt', 'BiocW
 
 ```{r, plotPosts, echo = FALSE, dev='png', warning=FALSE, fig.height=8, cache = FALSE, eval = TRUE}
 all_posts %>% 
-    bind_rows(github_issues) %>%
+    bind_rows(github_issues) %>% 
+    #filter(tag == "EnrichedHeatmap") %>%
     mutate(tag = factor(tag, levels = fct_levels)) %>%
     filter(year(creation_date) >= 2015) %>% 
-    ggplot(aes(fill = site, x = year(creation_date))) + 
-    geom_bar() +
+    mutate(year = as.Date(floor_date(creation_date, unit = "year"))) %>%
+    ggplot(aes(fill = site, x = year)) + 
+    geom_bar(width = 350) +
+    scale_x_date() + 
     scale_fill_manual(values = c('#1a81c2', '#8f2c47', 'grey40'),
                       name = "Site",
                       labels = c("bioconductor.org", "biostars.org", "github.com")) + 
