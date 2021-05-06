@@ -103,8 +103,8 @@ nyears <- year(today()) - min(year(bioc_stats$Date)) + 1
 
 ggplot(dl_stats, aes(x = Date, y = Nb_of_distinct_IPs, 
                       fill = as.factor(year(Date)),
-                      color = as.factor(year(Date)),
-                      width = days_in_month(Date))) + 
+                      color = as.factor(year(Date))),
+                      width = 28) + 
     geom_bar(stat = 'identity') +
     xlab('year') +
     xlim(c(ymd("2015-01-01"), ceiling_date(max(bioc_stats$Date)+1, "year"))) +
@@ -133,8 +133,8 @@ nyears <- year(today()) - min(year(bioc_stats$Date)) + 1
 
 ggplot(conda_stats, aes(x = Date, y = Nb_of_downloads, 
                       fill = as.factor(year(Date)),
-                      color = as.factor(year(Date)),
-                      width = days_in_month(Date))) + 
+                      color = as.factor(year(Date))),
+                      width = 28) + 
     geom_bar(stat = 'identity') +
     xlab('year') +
     xlim(c(ymd("2015-01-01"), ceiling_date(max(conda_stats$Date)+1, "year"))) +
