@@ -9,6 +9,9 @@ on:
 
 name: update-count-tables
 
+env:
+  GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+
 jobs:
   update-count-tables:
     runs-on: ubuntu-22.04
