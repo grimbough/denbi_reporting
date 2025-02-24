@@ -176,37 +176,5 @@ getGithubIssues <- function(user = 'grimbough', repo = "rhdf5") {
     return(res)
 }
 
-
-    
-
-getBiocStats <- function(package = 'rhdf5') {
-    url <- paste0('https://www.bioconductor.org/packages/stats/bioc/',
-                 package, '/', package, '_stats.tab', sep = '')
-    dl_stats <- read_delim(url, delim = '\t', col_types = c('ccii')) %>% 
-        filter(Month != 'all') %>%
-        mutate(Date = ymd(paste(Year, Month, '01', sep = '-')), Site = 'bioc', Package = package)
-    dl_stats
-}
-
-getCondaStats <- function(packages = 'rhdf5', bioc = TRUE) {
-    
-    temp_file <- tempfile()
-    url <- ifelse (bioc, 
-                   'https://github.com/grimbough/anaconda-download-stats/raw/master/rdata/bioc_counts.rds',
-                   'https://github.com/grimbough/anaconda-download-stats/raw/master/rdata/all_counts.rds'
-    )  
-    download.file(url, destfile = temp_file)
-    
-    tab <- readRDS(temp_file)
-    if(bioc != TRUE) {
-        tab <- tab %>% rename(Package = pkg_name, Year = year, 
-                              Month = month, Nb_of_downloads = counts)
-    }
-    tab %>% 
-        dplyr::filter(Package %in% packages) %>%
-        mutate(Date = ymd(paste(Year, Month, '01', sep = '-')))
-}
-
-
     
     
