@@ -17,3 +17,8 @@ getCondaStats <- function(packages = 'rhdf5', bioc = TRUE) {
     mutate(Date = ymd(paste(Year, Month, '01', sep = '-')))
 }
 
+getCondaStats <- function(packages = 'rhdf5', bioc = TRUE) {
+  readRDS(url('https://github.com/grimbough/anaconda-download-stats/raw/master/rdata/all_counts.rds')) %>%
+    dplyr::filter(Package %in% packages) %>%
+    mutate(Date = ymd(paste(Year, Month, '01', sep = '-')))
+}
