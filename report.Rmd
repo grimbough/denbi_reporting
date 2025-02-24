@@ -67,11 +67,11 @@ fct_levels <- packages %>%
 ```{r getDownloadCounts, echo = FALSE, include = FALSE, warning=FALSE, message=FALSE, cache = FALSE}
 tab <- BiocPkgTools::biocDownloadStats()
 tab2 <- BiocPkgTools::anacondaDownloadStats()
-tab3 <- getCondaStats(packages, bioc = FALSE)
+tab3 <- getCondaStats(filter(packages, in_bioc == FALSE) %>% pull(pkg), bioc = FALSE)
 
 bioc_stats <- tab %>%
   filter(Package %in% packages$pkg, Year >= 2015, !is.na(Date)) %>%
-  select(-Year, -Month, -repo) %>%
+  select(-Year, -Month, -pkgType) %>%
   mutate(PackageComb = if_else(grepl(Package, pattern = 'hdf5'), 'rhdf5+Rhdf5lib', Package))
 
 conda_stats_bioc <- tab2 %>%   
