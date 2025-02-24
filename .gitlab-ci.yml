@@ -1,0 +1,17 @@
+image: rocker/tidyverse:4.4
+
+Update-KPI-Tables:
+  only:
+    - schedules
+    
+  before_script:
+    - git config --global user.name "${GITLAB_USER_NAME}"
+    - git config --global user.email "${GITLAB_USER_EMAIL}"
+    - export CURRENTDATE=`date -I`
+
+  script:
+    - Rscript rscripts/create_kpi_tables.R
+    - git add tool_KPIs.xlsx
+    - git commit -m "Automatic update of KPI tables on ${CURRENTDATE}" || echo "No changes to commit"
+    - git push -o ci.skip "https://gitlab-ci-token:${UPDATE_KPI_TABLES}@git.embl.de/grp-huber/website-bibliography.git" HEAD:main || echo "No changes to commit"
+
