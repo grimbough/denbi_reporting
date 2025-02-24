@@ -1,5 +1,3 @@
-source('get_conda_stats.R')
-
 if (!require("pak", quietly = TRUE))
   install.packages("pak")
 
@@ -59,6 +57,13 @@ pkgs_required_today <- NULL
 #   'BiocWorkflowTools'
 # )
 
+## function that downloads anaconda download counts and filters for the packages
+## we're interested in
+getCondaStats <- function(packages) {
+  readRDS(url('https://github.com/grimbough/anaconda-download-stats/raw/master/rdata/all_counts.rds')) %>%
+    dplyr::filter(Package %in% packages) %>%
+    mutate(Date = ymd(paste(Year, Month, '01', sep = '-')))
+}
 
 ## Get the download counts.  
 ## First two are for Bioconductor directly and for Bioconductor packages obtained from bioconda
